@@ -2,6 +2,8 @@ import { isRequest } from './messaging';
 import { inspectUrl } from './url-analysis';
 import { analyzeWithLocalApi } from './ml-client';
 import { inspectPageDom, validatePageDomObservation } from './page-inspector';
+import { loadAuthorizedReminderOrigins, loadSuppressedReminderHosts, LOGIN_REMINDER_VISITED_KEY, nextReminderKind, reminderTargetForUrl, remindersEnabledForSite, removeReminderOrigin, sanitizedHostList, stopReminderScriptsOnOrigin, updateSuppressedReminderHost, validateContentReminderMessage } from './login-reminders';
+import { loadPreferences } from './preferences';
 import type { ExtensionRequest, ExtensionResponse, PageInspectionResult, ReportResult } from './types';
 
 async function reportForTab(tab: chrome.tabs.Tab | undefined): Promise<ReportResult> {
@@ -50,12 +52,61 @@ export async function handleRequest(request: ExtensionRequest): Promise<Extensio
   return { status: 'opened' };
 }
 
+async function reminderSiteIsEnabled(origin: string): Promise<boolean> {
+  const target = new URL(origin);
+  const [preferences, origins, suppressed] = await Promise.all([loadPreferences(), loadAuthorizedReminderOrigins(), loadSuppressedReminderHosts()]);
+  if (!remindersEnabledForSite(preferences.smartPasswordHintReminders, origin, origins, suppressed)) return false;
+  const hostPattern = `${target.protocol}//${target.hostname}/*`;
+  return chrome.permissions.contains({ origins: [hostPattern] });
+}
+
+async function handleContentReminderMessage(message: unknown, sender: chrome.runtime.MessageSender): Promise<unknown> {
+  const request = validateContentReminderMessage(message, sender, chrome.runtime.id);
+  if (!request) return { status: 'ignored' };
+  const target = new URL(request.origin);
+  if (request.type === 'GET_LOGIN_REMINDER_CONFIG') return { enabled: await reminderSiteIsEnabled(request.origin) };
+  if (!await reminderSiteIsEnabled(request.origin)) return { status: 'ignored' };
+
+  if (request.type === 'LOGIN_FORM_DETECTED') {
+    const storage = await chrome.storage.local.get(LOGIN_REMINDER_VISITED_KEY);
+    const state = nextReminderKind(target.hostname, sanitizedHostList(storage[LOGIN_REMINDER_VISITED_KEY]));
+    await chrome.storage.local.set({ [LOGIN_REMINDER_VISITED_KEY]: state.visitedHosts });
+    return { status: 'show', kind: state.kind };
+  }
+
+  if (request.action === 'suppress') {
+    await updateSuppressedReminderHost(target.hostname, true);
+    const origins = await loadAuthorizedReminderOrigins();
+    await Promise.all(origins.filter((origin) => reminderTargetForUrl(origin)?.hostname === target.hostname).map((origin) => stopReminderScriptsOnOrigin(origin).catch(() => undefined)));
+    return { status: 'suppressed' };
+  }
+
+  const params = new URLSearchParams({ siteHost: target.hostname });
+  if (request.action === 'create') params.set('create', '1');
+  await chrome.tabs.create({ url: chrome.runtime.getURL(`vault.html?${params.toString()}`) });
+  return { status: 'opened' };
+}
+
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse: (response: ExtensionResponse) => void) => {
   if (sender.id !== chrome.runtime.id) return false;
+  const messageType = message && typeof message === 'object' && !Array.isArray(message) ? (message as Record<string, unknown>).type : undefined;
+  if (messageType === 'GET_LOGIN_REMINDER_CONFIG' || messageType === 'LOGIN_FORM_DETECTED' || messageType === 'LOGIN_REMINDER_ACTION') {
+    void handleContentReminderMessage(message, sender).then((response) => sendResponse(response as ExtensionResponse)).catch(() => sendResponse({ status: 'ignored' }));
+    return true;
+  }
   if (!isRequest(message)) {
     sendResponse({ status: 'error', reason: 'Invalid extension request.' });
     return false;
   }
   void handleRequest(message).then(sendResponse).catch(() => sendResponse({ status: 'error', reason: 'The extension could not complete the request. Try again.' }));
   return true;
+});
+
+chrome.permissions.onRemoved.addListener((removed) => {
+  const removedPatterns = new Set(removed.origins ?? []);
+  if (!removedPatterns.size) return;
+  void loadAuthorizedReminderOrigins().then((origins) => Promise.all(origins.filter((origin) => {
+    const site = reminderTargetForUrl(origin);
+    return site && removedPatterns.has(site.permissionPattern);
+  }).map((origin) => removeReminderOrigin(origin).catch(() => undefined))));
 });

@@ -18,17 +18,17 @@ describe('message validation', () => {
 });
 describe('stored preference validation', () => {
   it('uses defaults for missing or untrusted values', () => {
-    expect(sanitizePreferences({ showUrlObservations: false, highlightHttp: 'no' })).toEqual({ showUrlObservations: false, highlightHttp: true, showRecommendations: true });
-    expect(sanitizePreferences(null)).toEqual({ showUrlObservations: true, highlightHttp: true, showRecommendations: true });
+    expect(sanitizePreferences({ showUrlObservations: false, highlightHttp: 'no' })).toEqual({ showUrlObservations: false, highlightHttp: true, showRecommendations: true, smartPasswordHintReminders: false });
+    expect(sanitizePreferences(null)).toEqual({ showUrlObservations: true, highlightHttp: true, showRecommendations: true, smartPasswordHintReminders: false });
   });
   it('loads and saves through Chrome local storage', async () => {
     const get = vi.fn().mockResolvedValue({ preferences: { showUrlObservations: false } });
     const set = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('chrome', { storage: { local: { get, set } } });
-    expect(await loadPreferences()).toEqual({ showUrlObservations: false, highlightHttp: true, showRecommendations: true });
-    await savePreferences({ showUrlObservations: false, highlightHttp: false, showRecommendations: true });
+    expect(await loadPreferences()).toEqual({ showUrlObservations: false, highlightHttp: true, showRecommendations: true, smartPasswordHintReminders: false });
+    await savePreferences({ showUrlObservations: false, highlightHttp: false, showRecommendations: true, smartPasswordHintReminders: false });
     expect(get).toHaveBeenCalledWith('preferences');
-    expect(set).toHaveBeenCalledWith({ preferences: { showUrlObservations: false, highlightHttp: false, showRecommendations: true } });
+    expect(set).toHaveBeenCalledWith({ preferences: { showUrlObservations: false, highlightHttp: false, showRecommendations: true, smartPasswordHintReminders: false } });
     vi.unstubAllGlobals();
   });
 });

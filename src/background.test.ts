@@ -5,14 +5,17 @@ const get = vi.fn();
 const create = vi.fn();
 const addListener = vi.fn();
 const executeScript = vi.fn();
+const permissionRemovedListener = vi.fn();
 
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
   vi.stubGlobal('chrome', {
     runtime: { id: 'extension-id', getURL: (path: string) => `chrome-extension://extension-id/${path}`, onMessage: { addListener } },
-    tabs: { query, get, create },
+    tabs: { query, get, create, sendMessage: vi.fn() },
     scripting: { executeScript },
+    permissions: { contains: vi.fn().mockResolvedValue(false), remove: vi.fn(), onRemoved: { addListener: permissionRemovedListener } },
+    storage: { local: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) } },
   });
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
 });

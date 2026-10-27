@@ -46,15 +46,17 @@ export type PageInspectionResult =
   | { status: 'analyzed'; data: PageInspectionData }
   | { status: 'unavailable'; reason: string; kind: 'unsupported-page' | 'permission-denied' | 'page-changed' }
   | { status: 'error'; reason: string };
-export type ExtensionResponse = ReportResult | { status: 'opened' } | { type: 'PAGE_INSPECTION_RESULT'; result: PageInspectionResult };
+export type ExtensionResponse = ReportResult | { status: 'opened' | 'ignored' | 'suppressed' } | { status: 'show'; kind: 'first' | 'returning' } | { enabled: boolean } | { type: 'PAGE_INSPECTION_RESULT'; result: PageInspectionResult };
 
 export interface Preferences {
   showUrlObservations: boolean;
   highlightHttp: boolean;
   showRecommendations: boolean;
+  smartPasswordHintReminders: boolean;
 }
 export const DEFAULT_PREFERENCES: Preferences = {
   showUrlObservations: true,
   highlightHttp: true,
   showRecommendations: true,
+  smartPasswordHintReminders: false,
 };

@@ -11,5 +11,9 @@ export async function sendRequest(request: ExtensionRequest): Promise<ExtensionR
   return chrome.runtime.sendMessage(request) as Promise<ExtensionResponse>;
 }
 export function asReportResult(response: ExtensionResponse): ReportResult {
-  return 'type' in response || response.status === 'opened' ? { status: 'error', reason: 'Unexpected response from extension service worker.' } : response;
+  if ('type' in response || !('status' in response)) return { status: 'error', reason: 'Unexpected response from extension service worker.' };
+  switch (response.status) {
+    case 'opened': case 'ignored': case 'suppressed': case 'show': return { status: 'error', reason: 'Unexpected response from extension service worker.' };
+    default: return response;
+  }
 }

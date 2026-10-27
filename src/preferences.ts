@@ -8,6 +8,7 @@ export function sanitizePreferences(input: unknown): Preferences {
     showUrlObservations: typeof value.showUrlObservations === 'boolean' ? value.showUrlObservations : DEFAULT_PREFERENCES.showUrlObservations,
     highlightHttp: typeof value.highlightHttp === 'boolean' ? value.highlightHttp : DEFAULT_PREFERENCES.highlightHttp,
     showRecommendations: typeof value.showRecommendations === 'boolean' ? value.showRecommendations : DEFAULT_PREFERENCES.showRecommendations,
+    smartPasswordHintReminders: typeof value.smartPasswordHintReminders === 'boolean' ? value.smartPasswordHintReminders : DEFAULT_PREFERENCES.smartPasswordHintReminders,
   };
 }
 export async function loadPreferences(): Promise<Preferences> {
