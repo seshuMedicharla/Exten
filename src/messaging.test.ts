@@ -6,6 +6,8 @@ describe('message validation', () => {
   it('accepts only known requests with valid tab IDs', () => {
     expect(isRequest({ type: 'GET_ACTIVE_REPORT' })).toBe(true);
     expect(isRequest({ type: 'OPEN_REPORT', tabId: 12 })).toBe(true);
+    expect(isRequest({ type: 'INSPECT_PAGE', tabId: 12 })).toBe(true);
+    expect(isRequest({ type: 'INSPECT_PAGE', tabId: -1 })).toBe(false);
     expect(isRequest({ type: 'OPEN_REPORT', tabId: -1 })).toBe(false);
     expect(isRequest({ type: 'GET_TAB_REPORT', tabId: '12' })).toBe(false);
     expect(isRequest({ type: 'DELETE_ALL' })).toBe(false);

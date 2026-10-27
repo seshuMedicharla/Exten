@@ -25,6 +25,7 @@ describe('inspectUrl', () => {
   it('handles inaccessible, malformed, and oversized addresses', () => {
     expect(inspectUrl(undefined, 1).status).toBe('permission-denied');
     expect(inspectUrl('not a url', 1).status).toBe('unsupported');
+    expect(inspectUrl('https://example.com/\nsecret', 1).status).toBe('unsupported');
     expect(inspectUrl(`https://example.com/${'a'.repeat(8200)}`, 1).status).toBe('unsupported');
   });
   it('recognizes IP and encoded hostnames', () => {

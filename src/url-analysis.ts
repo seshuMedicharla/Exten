@@ -5,6 +5,9 @@ export function inspectUrl(rawUrl: unknown, tabId: number, inspectedAt = Date.no
     return { status: 'permission-denied', reason: 'Chrome did not provide the active tab URL. Open a website and try again.' };
   }
   if (rawUrl.length > 8192) return { status: 'unsupported', reason: 'This URL is too long to inspect.' };
+  if (/\s/u.test(rawUrl) || [...rawUrl].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
+    return { status: 'unsupported', reason: 'This tab has an invalid URL.' };
+  }
 
   let url: URL;
   try { url = new URL(rawUrl); }
@@ -30,7 +33,7 @@ export function inspectUrl(rawUrl: unknown, tabId: number, inspectedAt = Date.no
   url.password = '';
   url.search = '';
   url.hash = '';
-  const report: SiteReport = { tabId, url: url.href, hostname: url.hostname, protocol: url.protocol, inspectedAt, indicators };
+  const report: SiteReport = { tabId, url: url.href, hostname: url.hostname, protocol: url.protocol, inspectedAt, indicators, ml: { status: 'not-analyzed', reason: 'Local ML assessment has not run.' } };
   return { status: 'ready', report };
 }
 
